@@ -14,6 +14,40 @@ type PacketLayer interface {
 	Summary() string
 }
 
+type LayerFactory func(gopacket.Layer) (PacketLayer, bool)
+
+type LayerRegistry struct {
+	factories map[gopacket.LayerType]LayerFactory
+}
+
+func NewLayerRegistry() *LayerRegistry {
+	return &LayerRegistry{
+		factories: make(map[gopacket.LayerType]LayerFactory),
+	}
+}
+
+func (r *LayerRegistry) Register(layerType gopacket.LayerType, factory LayerFactory) {
+	r.factories[layerType] = factory
+}
+
+func (r *LayerRegistry) Build(layer gopacket.Layer) (PacketLayer, bool) {
+	factory, ok := r.factories[layer.LayerType()]
+	if !ok {
+		return nil, false
+	}
+	return factory(layer)
+}
+
+func (r *LayerRegistry) Extract(packet gopacket.Packet) []PacketLayer {
+	result := make([]PacketLayer, 0, len(packet.Layers()))
+	for _, layer := range packet.Layers() {
+		if packetLayer, ok := r.Build(layer); ok {
+			result = append(result, packetLayer)
+		}
+	}
+	return result
+}
+
 type EthernetInfo struct {
 	Src string
 	Dst string
@@ -57,41 +91,55 @@ func (t TCPInfo) Summary() string {
 	)
 }
 
-func extractLayers(packet gopacket.Packet) []PacketLayer {
-	var result []PacketLayer
+func defaultLayerRegistry() *LayerRegistry {
+	registry := NewLayerRegistry()
 
-	for _, layer := range packet.Layers() {
-		switch l := layer.(type) {
-		case *layers.Ethernet:
-			result = append(result, EthernetInfo{
-				Src: l.SrcMAC.String(),
-				Dst: l.DstMAC.String(),
-			})
-		case *layers.IPv6:
-			result = append(result, IPv6Info{
-				Src: l.SrcIP.String(),
-				Dst: l.DstIP.String(),
-			})
-		case *layers.TCP:
-			result = append(result, TCPInfo{
-				SrcPort: uint16(l.SrcPort),
-				DstPort: uint16(l.DstPort),
-				Seq:     l.Seq,
-			})
+	registry.Register(layers.LayerTypeEthernet, func(layer gopacket.Layer) (PacketLayer, bool) {
+		ethernet, ok := layer.(*layers.Ethernet)
+		if !ok {
+			return nil, false
 		}
-	}
+		return EthernetInfo{
+			Src: ethernet.SrcMAC.String(),
+			Dst: ethernet.DstMAC.String(),
+		}, true
+	})
 
-	return result
+	registry.Register(layers.LayerTypeIPv6, func(layer gopacket.Layer) (PacketLayer, bool) {
+		ip6, ok := layer.(*layers.IPv6)
+		if !ok {
+			return nil, false
+		}
+		return IPv6Info{
+			Src: ip6.SrcIP.String(),
+			Dst: ip6.DstIP.String(),
+		}, true
+	})
+
+	registry.Register(layers.LayerTypeTCP, func(layer gopacket.Layer) (PacketLayer, bool) {
+		tcp, ok := layer.(*layers.TCP)
+		if !ok {
+			return nil, false
+		}
+		return TCPInfo{
+			SrcPort: uint16(tcp.SrcPort),
+			DstPort: uint16(tcp.DstPort),
+			Seq:     tcp.Seq,
+		}, true
+	})
+
+	return registry
 }
 
-func handlePacket(packet gopacket.Packet) {
-	log.Println("_____________________________________________________________________")
-	for _, layer := range extractLayers(packet) {
-		log.Printf("[%s] %s\n", layer.Name(), layer.Summary())
+func handlePacket(packet gopacket.Packet, registry *LayerRegistry) {
+	for _, layer := range registry.Extract(packet) {
+		log.Printf("[%s] %s", layer.Name(), layer.Summary())
 	}
 }
 
 func main() {
+	registry := defaultLayerRegistry()
+
 	// Open the device for capturing
 	handle, err := pcap.OpenLive("wlp170s0", 1600, true, pcap.BlockForever)
 	if err != nil {
@@ -99,15 +147,14 @@ func main() {
 	}
 	defer handle.Close()
 
-	var filter = "tcp and ip6"
-	err = handle.SetBPFFilter(filter)
-	if err != nil {
+	filter := "tcp and ip6"
+	if err := handle.SetBPFFilter(filter); err != nil {
 		log.Fatal(err)
 	}
 
 	// Use the handle as a packet source to process all packets
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
-		handlePacket(packet)
+		handlePacket(packet, registry)
 	}
 }
