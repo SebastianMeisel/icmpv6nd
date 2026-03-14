@@ -1,0 +1,4 @@
+interface: wlp170s0
+
+capture:
+  filter: icmp6 and (ip6[40] == 133 or ip6[40] == 134 or ip6[40] == 135 or ip6[40] == 136)
