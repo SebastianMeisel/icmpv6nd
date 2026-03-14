@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/inancgumus/screen"
 	"os"
 	"sort"
 	"strings"
@@ -51,7 +52,7 @@ func (c *NDCache) Add(record NDRecord) {
 
 func (c *NDCache) renderLocked() {
 	var b strings.Builder
-
+	screen.Clear()
 	b.WriteString("\033[H\033[2J")
 	b.WriteString("IPv6 Neighbor Discovery cache\n")
 	b.WriteString(fmt.Sprintf("captured packets: %d\n\n", c.total))
