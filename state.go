@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/inancgumus/screen"
 	"os"
 	"sort"
 	"strings"
@@ -48,6 +49,7 @@ func (c *NDCache) Add(record NDRecord) {
 }
 
 func (c *NDCache) renderLocked() {
+	screen.Clear()
 	var b strings.Builder
 	b.WriteString("\033[H\033[2J")
 	b.WriteString("IPv6 Neighbor Discovery cache\n")
