@@ -17,7 +17,7 @@ func RegisterND(r *Registry) {
 	r.Register(layers.ICMPv6TypeRouterAdvertisement, handleRA)
 }
 
-func handleNS(packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
+func handleNS(packet gopacket.Packet, icmp *layers.ICMPv6, iface string) *NDRecord {
 	l := packet.Layer(layers.LayerTypeICMPv6NeighborSolicitation)
 	if l == nil {
 		return nil
@@ -35,10 +35,10 @@ func handleNS(packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
 		}
 	}
 
-	return newNDRecord("Neighbor Solicitation", src, ns.TargetAddress.String(), meta)
+	return newNDRecord(iface, "Neighbor Solicitation", src, ns.TargetAddress.String(), meta)
 }
 
-func handleNA(packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
+func handleNA(packet gopacket.Packet, icmp *layers.ICMPv6, iface string) *NDRecord {
 	l := packet.Layer(layers.LayerTypeICMPv6NeighborAdvertisement)
 	if l == nil {
 		return nil
@@ -57,10 +57,10 @@ func handleNA(packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
 		}
 	}
 
-	return newNDRecord("Neighbor Advertisement", src, na.TargetAddress.String(), meta)
+	return newNDRecord(iface, "Neighbor Advertisement", src, na.TargetAddress.String(), meta)
 }
 
-func handleRA(packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
+func handleRA(packet gopacket.Packet, icmp *layers.ICMPv6, iface string) *NDRecord {
 	l := packet.Layer(layers.LayerTypeICMPv6RouterAdvertisement)
 	if l == nil {
 		return nil
@@ -80,7 +80,7 @@ func handleRA(packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
 		meta["options"] = opts
 	}
 
-	return newNDRecord("Router Advertisement", src, "ff02::1", meta)
+	return newNDRecord(iface, "Router Advertisement", src, "ff02::1", meta)
 }
 
 func packetIPv6Source(packet gopacket.Packet) string {
@@ -213,7 +213,7 @@ func formatMAC(data []byte) string {
 	return net.HardwareAddr(data).String()
 }
 
-func newNDRecord(kind string, source string, subject string, meta map[string]string) *NDRecord {
+func newNDRecord(iface string, kind string, source string, subject string, meta map[string]string) *NDRecord {
 	keys := make([]string, 0, len(meta))
 	for k := range meta {
 		keys = append(keys, k)
@@ -226,10 +226,11 @@ func newNDRecord(kind string, source string, subject string, meta map[string]str
 	}
 
 	return &NDRecord{
-		Key:     fmt.Sprintf("%s|%s|%s|%s", kind, source, subject, strings.Join(parts, "|")),
-		Kind:    kind,
-		Source:  source,
-		Subject: subject,
-		Details: parts,
+		Key:       fmt.Sprintf("%s|%s|%s|%s|%s", iface, kind, source, subject, strings.Join(parts, "|")),
+		Interface: iface,
+		Kind:      kind,
+		Source:    source,
+		Subject:   subject,
+		Details:   parts,
 	}
 }

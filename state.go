@@ -2,20 +2,22 @@ package main
 
 import (
 	"fmt"
-	"github.com/inancgumus/screen"
 	"os"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/inancgumus/screen"
 )
 
 type NDRecord struct {
-	Key     string
-	Kind    string
-	Source  string
-	Subject string
-	Details []string
-	Count   int
+	Key       string
+	Interface string
+	Kind      string
+	Source    string
+	Subject   string
+	Details   []string
+	Count     int
 }
 
 type NDCache struct {
@@ -69,6 +71,9 @@ func (c *NDCache) renderLocked() {
 	}
 
 	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].Interface != entries[j].Interface {
+			return entries[i].Interface < entries[j].Interface
+		}
 		if entries[i].Kind != entries[j].Kind {
 			return entries[i].Kind < entries[j].Kind
 		}
@@ -80,6 +85,7 @@ func (c *NDCache) renderLocked() {
 
 	for _, entry := range entries {
 		b.WriteString(fmt.Sprintf("[%3d] %s\n", entry.Count, entry.Kind))
+		b.WriteString(fmt.Sprintf("      iface  : %s\n", entry.Interface))
 		b.WriteString(fmt.Sprintf("      source : %s\n", entry.Source))
 		b.WriteString(fmt.Sprintf("      subject: %s\n", entry.Subject))
 		for _, detail := range entry.Details {
