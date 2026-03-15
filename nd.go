@@ -17,7 +17,7 @@ func RegisterND(r *Registry) {
 	r.Register(layers.ICMPv6TypeRouterAdvertisement, handleRA)
 }
 
-func handleNS(packet gopacket.Packet, icmp *layers.ICMPv6, iface string) *NDRecord {
+func handleNS(iface string, packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
 	l := packet.Layer(layers.LayerTypeICMPv6NeighborSolicitation)
 	if l == nil {
 		return nil
@@ -38,7 +38,7 @@ func handleNS(packet gopacket.Packet, icmp *layers.ICMPv6, iface string) *NDReco
 	return newNDRecord(iface, "Neighbor Solicitation", src, ns.TargetAddress.String(), meta)
 }
 
-func handleNA(packet gopacket.Packet, icmp *layers.ICMPv6, iface string) *NDRecord {
+func handleNA(iface string, packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
 	l := packet.Layer(layers.LayerTypeICMPv6NeighborAdvertisement)
 	if l == nil {
 		return nil
@@ -60,7 +60,7 @@ func handleNA(packet gopacket.Packet, icmp *layers.ICMPv6, iface string) *NDReco
 	return newNDRecord(iface, "Neighbor Advertisement", src, na.TargetAddress.String(), meta)
 }
 
-func handleRA(packet gopacket.Packet, icmp *layers.ICMPv6, iface string) *NDRecord {
+func handleRA(iface string, packet gopacket.Packet, icmp *layers.ICMPv6) *NDRecord {
 	l := packet.Layer(layers.LayerTypeICMPv6RouterAdvertisement)
 	if l == nil {
 		return nil
@@ -154,20 +154,16 @@ func describeRAOption(opt layers.ICMPv6Option) string {
 	switch opt.Type {
 	case layers.ICMPv6OptSourceAddress:
 		return fmt.Sprintf("%s mac=%s", opt.Type, formatMAC(opt.Data))
-
 	case layers.ICMPv6OptTargetAddress:
 		return fmt.Sprintf("%s mac=%s", opt.Type, formatMAC(opt.Data))
-
 	case layers.ICMPv6OptMTU:
 		if len(opt.Data) < 6 {
 			return fmt.Sprintf("%s invalid(len=%d)", opt.Type, len(opt.Data))
 		}
 		mtu := binary.BigEndian.Uint32(opt.Data[2:6])
 		return fmt.Sprintf("%s mtu=%d", opt.Type, mtu)
-
 	case layers.ICMPv6OptPrefixInfo:
 		return describePrefixInfo(opt)
-
 	default:
 		return fmt.Sprintf("%s len=%d data=%x", opt.Type, len(opt.Data), opt.Data)
 	}

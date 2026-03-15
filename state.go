@@ -6,8 +6,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/inancgumus/screen"
 )
 
 type NDRecord struct {
@@ -28,9 +26,7 @@ type NDCache struct {
 }
 
 func NewNDCache() *NDCache {
-	return &NDCache{
-		entries: map[string]*NDRecord{},
-	}
+	return &NDCache{entries: map[string]*NDRecord{}}
 }
 
 func (c *NDCache) Add(record NDRecord) {
@@ -38,7 +34,6 @@ func (c *NDCache) Add(record NDRecord) {
 	defer c.mu.Unlock()
 
 	c.total++
-
 	if existing, ok := c.entries[record.Key]; ok {
 		existing.Count++
 		c.renderLocked()
@@ -54,7 +49,6 @@ func (c *NDCache) Add(record NDRecord) {
 
 func (c *NDCache) renderLocked() {
 	var b strings.Builder
-	screen.Clear()
 	b.WriteString("\033[H\033[2J")
 	b.WriteString("IPv6 Neighbor Discovery cache\n")
 	b.WriteString(fmt.Sprintf("captured packets: %d\n\n", c.total))

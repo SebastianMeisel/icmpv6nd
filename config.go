@@ -32,7 +32,7 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	if len(cfg.Interfaces) == 0 {
-		return nil, fmt.Errorf("config: at least one interface is required")
+		return nil, fmt.Errorf("config: define at least one interface in interfaces")
 	}
 
 	return &cfg, nil

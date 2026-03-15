@@ -5,7 +5,7 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-type Handler func(gopacket.Packet, *layers.ICMPv6, string) *NDRecord
+type Handler func(string, gopacket.Packet, *layers.ICMPv6) *NDRecord
 
 type Registry struct {
 	handlers map[uint8]Handler
@@ -30,9 +30,8 @@ func (r *Registry) Process(captured CapturedPacket) {
 	}
 
 	icmp := layer.(*layers.ICMPv6)
-
 	if h, ok := r.handlers[uint8(icmp.TypeCode.Type())]; ok {
-		if record := h(captured.Packet, icmp, captured.Interface); record != nil {
+		if record := h(captured.Interface, captured.Packet, icmp); record != nil {
 			r.cache.Add(*record)
 		}
 	}
