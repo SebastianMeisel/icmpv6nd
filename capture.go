@@ -10,12 +10,14 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
-type Packet = gopacket.Packet
+type (
+	Packet = gopacket.Packet
 
-type CapturedPacket struct {
-	Interface string
-	Packet    Packet
-}
+	CapturedPacket struct {
+		Interface string
+		Packet    Packet
+	}
+)
 
 func RunCapture(ctx context.Context, iface string, filter string, out chan<- CapturedPacket) error {
 	handle, err := pcap.OpenLive(iface, 65536, true, time.Second)

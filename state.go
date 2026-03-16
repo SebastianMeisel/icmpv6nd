@@ -9,22 +9,24 @@ import (
 	"sync"
 )
 
-type NDRecord struct {
-	Key       string
-	Interface string
-	Kind      string
-	Source    string
-	Subject   string
-	Details   []string
-	Count     int
-}
+type (
+	NDRecord struct {
+		Key       string
+		Interface string
+		Kind      string
+		Source    string
+		Subject   string
+		Details   []string
+		Count     int
+	}
 
-type NDCache struct {
-	mu      sync.Mutex
-	entries map[string]*NDRecord
-	order   []string
-	total   int
-}
+	NDCache struct {
+		mu      sync.Mutex
+		entries map[string]*NDRecord
+		order   []string
+		total   int
+	}
+)
 
 func NewNDCache() *NDCache {
 	return &NDCache{entries: map[string]*NDRecord{}}
@@ -53,7 +55,7 @@ func (c *NDCache) renderLocked() {
 	var b strings.Builder
 	b.WriteString("\033[H\033[2J")
 	b.WriteString("IPv6 Neighbor Discovery cache\n")
-	b.WriteString(fmt.Sprintf("captured packets: %d\n\n", c.total))
+	fmt.Fprintf(&b, "captured packets: %d\n\n", c.total)
 
 	if len(c.order) == 0 {
 		b.WriteString("waiting for packets...\n")
@@ -80,15 +82,14 @@ func (c *NDCache) renderLocked() {
 	})
 
 	for _, entry := range entries {
-		b.WriteString(fmt.Sprintf("[%3d] %s\n", entry.Count, entry.Kind))
-		b.WriteString(fmt.Sprintf("      iface  : %s\n", entry.Interface))
-		b.WriteString(fmt.Sprintf("      source : %s\n", entry.Source))
-		b.WriteString(fmt.Sprintf("      subject: %s\n", entry.Subject))
+		fmt.Fprintf(&b, "[%3d] %s\n", entry.Count, entry.Kind)
+		fmt.Fprintf(&b, "      source : %s\n", entry.Source)
+		fmt.Fprintf(&b, "      subject: %s\n", entry.Subject)
+
 		for _, detail := range entry.Details {
-			b.WriteString(fmt.Sprintf("      - %s\n", detail))
+			fmt.Fprintf(&b, "      - %s\n", detail)
 		}
 		b.WriteByte('\n')
 	}
-
 	_, _ = fmt.Fprint(os.Stdout, b.String())
 }

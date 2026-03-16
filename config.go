@@ -22,18 +22,28 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	cfg := &Config{}
+	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, err
 	}
 
+	normalizeConfig(cfg)
+	if err := validateConfig(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func normalizeConfig(cfg *Config) {
 	if len(cfg.Interfaces) == 0 && cfg.Interface != "" {
 		cfg.Interfaces = []string{cfg.Interface}
 	}
+}
 
+func validateConfig(cfg *Config) error {
 	if len(cfg.Interfaces) == 0 {
-		return nil, fmt.Errorf("config: define at least one interface in interfaces")
+		return fmt.Errorf("config: define at least one interface in interfaces")
 	}
-
-	return &cfg, nil
+	return nil
 }

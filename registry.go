@@ -5,12 +5,13 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-type Handler func(string, gopacket.Packet, *layers.ICMPv6) *NDRecord
-
-type Registry struct {
-	handlers map[uint8]Handler
-	cache    *NDCache
-}
+type (
+	Handler  func(string, gopacket.Packet, *layers.ICMPv6) *NDRecord
+	Registry struct {
+		handlers map[uint8]Handler
+		cache    *NDCache
+	}
+)
 
 func NewRegistry(cache *NDCache) *Registry {
 	return &Registry{
