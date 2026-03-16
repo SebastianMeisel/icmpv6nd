@@ -21,6 +21,7 @@ func main() {
 	defer stop()
 
 	cache := NewNDCache()
+	cache.Start(ctx)
 	registry := NewRegistry(cache)
 	RegisterND(registry)
 
