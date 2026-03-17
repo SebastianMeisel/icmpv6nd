@@ -33,6 +33,7 @@ type (
 		maxLineLen     int
 		maxDetails     int
 		notifyCh       chan struct{}
+		captureStats   *CaptureStats
 	}
 
 	ndSnapshot struct {
@@ -49,7 +50,7 @@ const (
 	defaultCacheMaxDetails     = 12
 )
 
-func NewNDCache() *NDCache {
+func NewNDCache(captureStats *CaptureStats) *NDCache {
 	return &NDCache{
 		entries:        map[string]*NDRecord{},
 		maxEntries:     defaultCacheMaxEntries,
@@ -58,6 +59,7 @@ func NewNDCache() *NDCache {
 		maxDetails:     defaultCacheMaxDetails,
 		dirty:          true,
 		notifyCh:       make(chan struct{}, 1),
+		captureStats:   captureStats,
 	}
 }
 
@@ -167,9 +169,16 @@ func (c *NDCache) renderSnapshot(s ndSnapshot) {
 
 	b.WriteString("\033[H\033[2J")
 	b.WriteString("IPv6 Neighbor Discovery cache\n")
-	fmt.Fprintf(&b, "captured packets: %d\n", s.Total)
-	fmt.Fprintf(&b, "cached entries   : %d/%d\n", len(s.Entries), c.maxEntries)
-	fmt.Fprintf(&b, "evicted entries  : %d\n\n", s.Dropped)
+	fmt.Fprintf(&b, "processed ND records: %d\n", s.Total)
+	if c.captureStats != nil {
+		received, queued, dropped, errs := c.captureStats.Snapshot()
+		fmt.Fprintf(&b, "captured packets   : %d\n", received)
+		fmt.Fprintf(&b, "enqueued packets   : %d\n", queued)
+		fmt.Fprintf(&b, "dropped packets    : %d\n", dropped)
+		fmt.Fprintf(&b, "capture errors     : %d\n", errs)
+	}
+	fmt.Fprintf(&b, "cached entries     : %d/%d\n", len(s.Entries), c.maxEntries)
+	fmt.Fprintf(&b, "evicted entries    : %d\n\n", s.Dropped)
 
 	if len(s.Entries) == 0 {
 		b.WriteString("waiting for packets...\n")

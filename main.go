@@ -11,6 +11,8 @@ import (
 	"syscall"
 )
 
+const packetChannelSize = 2048
+
 func main() {
 	cfg, err := LoadConfig("config.yml")
 	if err != nil {
@@ -20,12 +22,14 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	cache := NewNDCache()
+	captureStats := &CaptureStats{}
+	cache := NewNDCache(captureStats)
 	cache.Start(ctx)
+
 	registry := NewRegistry(cache)
 	RegisterND(registry)
 
-	packetCh := make(chan CapturedPacket, 256)
+	packetCh := make(chan CapturedPacket, packetChannelSize)
 	errCh := make(chan error, len(cfg.Interfaces))
 
 	var wg sync.WaitGroup
@@ -34,7 +38,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := RunCapture(ctx, iface, cfg.Capture.Filter, packetCh); err != nil && !errors.Is(err, context.Canceled) {
+			if err := RunCapture(ctx, iface, cfg.Capture.Filter, packetCh, captureStats); err != nil && !errors.Is(err, context.Canceled) {
 				errCh <- fmt.Errorf("%s: %w", iface, err)
 			}
 		}()
@@ -69,5 +73,6 @@ func main() {
 		}
 	}
 
-	log.Print("all capture workers stopped")
+	received, queued, dropped, errs := captureStats.Snapshot()
+	log.Printf("all capture workers stopped (received=%d queued=%d dropped=%d errors=%d)", received, queued, dropped, errs)
 }
